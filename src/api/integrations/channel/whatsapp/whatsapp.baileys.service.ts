@@ -1159,18 +1159,18 @@ export class BaileysStartupService extends ChannelStartupService {
         }
 
         if (key.remoteJid !== 'status@broadcast') {
-          let pollUpdates: any;
+          // let pollUpdates: any;
 
-          if (update.pollUpdates) {
-            const pollCreation = await this.getMessage(key);
+          // if (update.pollUpdates) {
+          //   const pollCreation = await this.getMessage(key);
 
-            if (pollCreation) {
-              pollUpdates = getAggregateVotesInPollMessage({
-                message: pollCreation as proto.IMessage,
-                pollUpdates: update.pollUpdates,
-              });
-            }
-          }
+          //   if (pollCreation) {
+          //     pollUpdates = getAggregateVotesInPollMessage({
+          //       message: pollCreation as proto.IMessage,
+          //       pollUpdates: update.pollUpdates,
+          //     });
+          //   }
+          // }
 
           // const findMessage = await this.prismaRepository.message.findFirst({
           //   where: {
@@ -1228,7 +1228,7 @@ export class BaileysStartupService extends ChannelStartupService {
             fromMe: key.fromMe,
             participant: key?.remoteJid,
             status: status[update.status],
-            pollUpdates,
+            // pollUpdates,
             instanceId: this.instanceId,
           };
 
@@ -3349,7 +3349,10 @@ export class BaileysStartupService extends ChannelStartupService {
   public async updateMessage(data: UpdateMessageDto) {
     const jid = createJid(data.number);
 
-    const options = await this.formatUpdateMessage(data);
+    // const options = await this.formatUpdateMessage(data);
+    const options = {
+      text: data.text,
+    }
 
     if (!options) {
       this.logger.error('Message not compatible');
