@@ -551,7 +551,7 @@ export class BaileysStartupService extends ChannelStartupService {
       maxMsgRetryCount: 4,
       fireInitQueries: true,
       connectTimeoutMs: 30_000,
-      keepAliveIntervalMs: undefined,
+      keepAliveIntervalMs: 30_000,
       qrTimeout: 45_000,
       emitOwnEvents: false,
       shouldIgnoreJid: (jid) => {
