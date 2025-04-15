@@ -1,4 +1,4 @@
-FROM node:20-alpine3.20 AS builder
+FROM node:23.11.0-alpine3.20 AS builder
 
 RUN apk update && \
     apk add git wget curl bash openssl
