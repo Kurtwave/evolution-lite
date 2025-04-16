@@ -2803,8 +2803,7 @@ export class BaileysStartupService extends ChannelStartupService {
       (jid) => !cachedNumbers.some((cached) => cached.jidOptions.includes(jid)),
     );
 
-    // const verify = await this.client.onWhatsApp(...filteredNumbers);
-    const verify = [null];
+    const verify = await this.client.onWhatsApp(...filteredNumbers);
     const users: OnWhatsAppDto[] = await Promise.all(
       jids.users.map(async (user) => {
         let numberVerified: (typeof verify)[0] | null = null;
@@ -2863,8 +2862,7 @@ export class BaileysStartupService extends ChannelStartupService {
         const numberJid = numberVerified?.jid || user.jid;
 
         return {
-          //exists: !!numberVerified?.exists,
-          exists: true,
+          exists: !!numberVerified?.exists,
           jid: numberJid,
           name: contacts.find((c) => c.remoteJid === numberJid)?.pushName,
           number: user.number,
