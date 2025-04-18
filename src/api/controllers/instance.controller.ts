@@ -286,6 +286,12 @@ export class InstanceController {
     return this.waMonitor.instanceInfo(instanceNames);
   }
 
+  public async countInstances() {
+    const count = await this.prismaRepository.instance.count();
+
+    return count;
+  }
+
   public async setPresence({ instanceName }: InstanceDto, data: SetPresenceDto) {
     return await this.waMonitor.waInstances[instanceName].setPresence(data);
   }
