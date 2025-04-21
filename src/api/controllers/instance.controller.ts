@@ -286,9 +286,29 @@ export class InstanceController {
     return this.waMonitor.instanceInfo(instanceNames);
   }
 
+  public async getInstanceByName({ instanceName }: InstanceDto) {
+    const instanceByName = await this.prismaRepository.instance.findFirst({
+      where: {
+        name: instanceName,
+      },
+    });
+
+    if (!instanceByName) {
+      return null;
+    }
+
+    const response = {
+      id: instanceByName.id,
+      name: instanceByName.name,
+      ownerJid: instanceByName.ownerJid,
+      connectionStatus: instanceByName.connectionStatus,
+      profileName: instanceByName.profileName,
+    }
+    return response;
+  }
+
   public async countInstances() {
     const count = await this.prismaRepository.instance.count();
-
     return count;
   }
 
