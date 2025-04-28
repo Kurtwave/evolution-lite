@@ -3959,6 +3959,20 @@ export class BaileysStartupService extends ChannelStartupService {
     return response;
   }
 
+  public async baileysDownloadMediaMessage(message: proto.IWebMessageInfo) {
+    const buffer = await downloadMediaMessage(
+      message,
+      'buffer',
+      {},
+      {
+        logger: P({ level: 'error' }) as any,
+        reuploadRequest: this.client.updateMediaMessage,
+      },
+    );
+
+    return buffer.toString('base64');;
+  }
+
   public async baileysSignalRepositoryDecryptMessage(jid: string, type: 'pkmsg' | 'msg', ciphertext: string) {
     try {
       const ciphertextBuffer = Buffer.from(ciphertext, 'base64');

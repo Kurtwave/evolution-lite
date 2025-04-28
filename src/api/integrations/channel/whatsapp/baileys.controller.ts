@@ -40,6 +40,12 @@ export class BaileysController {
     return instance.baileysGenerateMessageTag();
   }
 
+  public async downloadMediaMessage({ instanceName }: InstanceDto, body: any) {
+    const instance = this.waMonitor.waInstances[instanceName];
+
+    return instance.baileysDownloadMediaMessage(body);
+  }
+
   public async sendNode({ instanceName }: InstanceDto, body: any) {
     const instance = this.waMonitor.waInstances[instanceName];
 
