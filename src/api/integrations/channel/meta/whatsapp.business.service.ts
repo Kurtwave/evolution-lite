@@ -68,7 +68,7 @@ export class BusinessStartupService extends ChannelStartupService {
   }
 
   private isMediaMessage(message: any) {
-    return message.document || message.image || message.audio || message.video;
+    return message.document || message.image || message.audio || message.video || message.sticker;
   }
 
   private async post(message: any, params: string) {
@@ -241,9 +241,10 @@ export class BusinessStartupService extends ChannelStartupService {
         vcard: vcard(message.contacts[0]),
       };
     } else {
+      const contactsArray = Array.isArray(message.contacts) ? message.contacts : [];
       content.contactsArrayMessage = {
         displayName: `${message.length} contacts`,
-        contacts: message.map((contact) => {
+        contacts: contactsArray.map((contact) => {
           return {
             displayName: contact.name.formatted_name,
             vcard: vcard(contact),
@@ -354,19 +355,19 @@ export class BusinessStartupService extends ChannelStartupService {
                 'Content-Type': mimetype,
               });
 
-              const createdMessage = await this.prismaRepository.message.create({
-                data: messageRaw,
-              });
+              // const createdMessage = await this.prismaRepository.message.create({
+              //   data: messageRaw,
+              // });
 
-              await this.prismaRepository.media.create({
-                data: {
-                  messageId: createdMessage.id,
-                  instanceId: this.instanceId,
-                  type: mediaType,
-                  fileName: fullName,
-                  mimetype,
-                },
-              });
+              // await this.prismaRepository.media.create({
+              //   data: {
+              //     messageId: createdMessage.id,
+              //     instanceId: this.instanceId,
+              //     type: mediaType,
+              //     fileName: fullName,
+              //     mimetype,
+              //   },
+              // });
 
               const mediaUrl = await s3Service.getObjectUrl(fullName);
 
@@ -449,11 +450,11 @@ export class BusinessStartupService extends ChannelStartupService {
 
         this.sendDataWebhook(Events.MESSAGES_UPSERT, messageRaw);
 
-        if (!this.isMediaMessage(received?.messages[0])) {
-          await this.prismaRepository.message.create({
-            data: messageRaw,
-          });
-        }
+        // if (!this.isMediaMessage(received?.messages[0])) {
+        //   await this.prismaRepository.message.create({
+        //     data: messageRaw,
+        //   });
+        // }
 
         const contact = await this.prismaRepository.contact.findFirst({
           where: { instanceId: this.instanceId, remoteJid: key.remoteJid },
@@ -504,42 +505,31 @@ export class BusinessStartupService extends ChannelStartupService {
             return;
           }
           if (key.remoteJid !== 'status@broadcast' && !key?.remoteJid?.match(/(:\d+)/)) {
-            const findMessage = await this.prismaRepository.message.findFirst({
-              where: {
-                instanceId: this.instanceId,
-                key: {
-                  path: ['id'],
-                  equals: key.id,
-                },
-              },
-            });
 
-            if (!findMessage) {
-              return;
-            }
+            if (item.status === 'read' && key.fromMe) return;
 
             if (item.message === null && item.status === undefined) {
               this.sendDataWebhook(Events.MESSAGES_DELETE, key);
 
-              const message: any = {
-                messageId: findMessage.id,
-                keyId: key.id,
-                remoteJid: key.remoteJid,
-                fromMe: key.fromMe,
-                participant: key?.remoteJid,
-                status: 'DELETED',
-                instanceId: this.instanceId,
-              };
+              // const message: any = {
+              //   messageId: item.id,
+              //   keyId: key.id,
+              //   remoteJid: key.remoteJid,
+              //   fromMe: key.fromMe,
+              //   participant: key?.remoteJid,
+              //   status: 'DELETED',
+              //   instanceId: this.instanceId,
+              // };
 
-              await this.prismaRepository.messageUpdate.create({
-                data: message,
-              });
+              // await this.prismaRepository.messageUpdate.create({
+              //   data: message,
+              // });
 
               return;
             }
 
             const message: any = {
-              messageId: findMessage.id,
+              messageId: item.id,
               keyId: key.id,
               remoteJid: key.remoteJid,
               fromMe: key.fromMe,
@@ -550,13 +540,9 @@ export class BusinessStartupService extends ChannelStartupService {
 
             this.sendDataWebhook(Events.MESSAGES_UPDATE, message);
 
-            await this.prismaRepository.messageUpdate.create({
-              data: message,
-            });
-
-            if (findMessage.webhookUrl) {
-              await axios.post(findMessage.webhookUrl, message);
-            }
+            // await this.prismaRepository.messageUpdate.create({
+            //   data: message,
+            // });
           }
         }
       }
@@ -721,8 +707,6 @@ export class BusinessStartupService extends ChannelStartupService {
           return await this.post(content, 'messages');
         }
         if (message['media']) {
-          const isImage = message['mimetype']?.startsWith('image/');
-
           content = {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
@@ -731,8 +715,8 @@ export class BusinessStartupService extends ChannelStartupService {
             [message['mediaType']]: {
               [message['type']]: message['id'],
               preview_url: linkPreview,
-              ...(message['fileName'] && !isImage && { filename: message['fileName'] }),
               caption: message['caption'],
+              ...(message['mediaType'] === "document" && message['fileName'] && {filename: message.fileName}),
             },
           };
           quoted ? (content.context = { message_id: quoted.id }) : content;
@@ -850,9 +834,9 @@ export class BusinessStartupService extends ChannelStartupService {
 
       this.sendDataWebhook(Events.SEND_MESSAGE, messageRaw);
 
-      await this.prismaRepository.message.create({
-        data: messageRaw,
-      });
+      // await this.prismaRepository.message.create({
+      //   data: messageRaw,
+      // });
 
       return messageRaw;
     } catch (error) {
@@ -882,26 +866,28 @@ export class BusinessStartupService extends ChannelStartupService {
 
   private async getIdMedia(mediaMessage: any) {
     const formData = new FormData();
-
-    const fileStream = createReadStream(mediaMessage.media);
-
-    formData.append('file', fileStream, { filename: 'media', contentType: mediaMessage.mimetype });
-    formData.append('typeFile', mediaMessage.mimetype);
+    const buffer = mediaMessage.media;
     formData.append('messaging_product', 'whatsapp');
+    formData.append('type', mediaMessage.mimetype);
+    formData.append('file', buffer, { filename: mediaMessage.fileName, contentType: mediaMessage.mimetype });
 
-    // const fileBuffer = await fs.readFile(mediaMessage.media);
+    const headers = { "Content-Type": "multipart/form-data", Authorization: `Bearer ${this.token}` };
+    let urlServer = this.configService.get<WaBusiness>('WA_BUSINESS').URL;
+    const version = this.configService.get<WaBusiness>('WA_BUSINESS').VERSION;
 
-    // const fileBlob = new Blob([fileBuffer], { type: mediaMessage.mimetype });
-    // formData.append('file', fileBlob);
-    // formData.append('typeFile', mediaMessage.mimetype);
-    // formData.append('messaging_product', 'whatsapp');
-
-    const headers = { Authorization: `Bearer ${this.token}` };
-    const res = await axios.post(
-      process.env.API_URL + '/' + process.env.VERSION + '/' + this.number + '/media',
-      formData,
-      { headers },
-    );
+    let res: any;
+    try {
+      res = await axios.post(
+        urlServer + '/' + version + '/' + this.number + '/media',
+        formData,
+        { headers },
+      );
+      
+    } catch (error) {
+      if (error.response) { 
+        this.logger.info(JSON.stringify(error.response.data));
+      }
+    }
     return res.data.id;
   }
 
@@ -937,11 +923,11 @@ export class BusinessStartupService extends ChannelStartupService {
         prepareMedia.type = 'link';
       } else {
         mimetype = mimeTypes.lookup(mediaMessage.fileName);
+        prepareMedia.mimetype = mimetype;
         const id = await this.getIdMedia(prepareMedia);
         prepareMedia.id = id;
         prepareMedia.type = 'id';
       }
-
       prepareMedia.mimetype = mimetype;
 
       return prepareMedia;
@@ -954,7 +940,7 @@ export class BusinessStartupService extends ChannelStartupService {
   public async mediaMessage(data: SendMediaDto, file?: any) {
     const mediaData: SendMediaDto = { ...data };
 
-    if (file) mediaData.media = file.buffer.toString('base64');
+    if (file) mediaData.media = file.buffer;
 
     const message = await this.prepareMediaMessage(mediaData);
 
@@ -981,7 +967,7 @@ export class BusinessStartupService extends ChannelStartupService {
     let mimetype: string | false;
 
     const prepareMedia: any = {
-      fileName: `${hash}.mp3`,
+      fileName: `${hash}.ogg`,
       mediaType: 'audio',
       media: audio,
     };
@@ -992,6 +978,7 @@ export class BusinessStartupService extends ChannelStartupService {
       prepareMedia.type = 'link';
     } else {
       mimetype = mimeTypes.lookup(prepareMedia.fileName);
+      prepareMedia.mimetype = mimetype;
       const id = await this.getIdMedia(prepareMedia);
       prepareMedia.id = id;
       prepareMedia.type = 'id';
@@ -1006,10 +993,7 @@ export class BusinessStartupService extends ChannelStartupService {
     const mediaData: SendAudioDto = { ...data };
 
     if (file?.buffer) {
-      mediaData.audio = file.buffer.toString('base64');
-    } else if (isURL(mediaData.audio)) {
-      // DO NOTHING
-      // mediaData.audio = mediaData.audio;
+      mediaData.audio = file.buffer;
     } else {
       console.error('El archivo no tiene buffer o file es undefined');
       throw new Error('File or buffer is undefined');

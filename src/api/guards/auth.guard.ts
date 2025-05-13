@@ -20,7 +20,7 @@ async function apikey(req: Request, _: Response, next: NextFunction) {
     return next();
   }
 
-  if ((req.originalUrl.includes('/instance/create') || req.originalUrl.includes('/instance/fetchInstances')) && !key) {
+  if ((req.originalUrl.includes('/instance/create') || req.originalUrl.includes('/instance/fetchInstances') || req.originalUrl.includes('/instance/countInstances') || req.originalUrl.includes('/instance/instanceByName')) && !key) {
     throw new ForbiddenException('Missing global api key', 'The global api key must be set');
   }
   const param = req.params as unknown as InstanceDto;
@@ -34,7 +34,7 @@ async function apikey(req: Request, _: Response, next: NextFunction) {
         return next();
       }
     } else {
-      if (req.originalUrl.includes('/instance/fetchInstances') && db.SAVE_DATA.INSTANCE) {
+      if ((req.originalUrl.includes('/instance/fetchInstances') || req.originalUrl.includes('/instance/countInstances') || req.originalUrl.includes('/instance/instanceByName')) && db.SAVE_DATA.INSTANCE) {
         const instanceByKey = await prismaRepository.instance.findFirst({
           where: { token: key },
         });
