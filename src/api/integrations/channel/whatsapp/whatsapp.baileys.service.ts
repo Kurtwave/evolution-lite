@@ -595,7 +595,7 @@ export class BaileysStartupService extends ChannelStartupService {
     this.eventHandler();
 
     this.client.ws.on('CB:call', (packet) => {
-      console.log('CB:call', packet);
+      // console.log('CB:call', packet);
       const payload = {
         event: 'CB:call',
         packet: packet,
@@ -604,7 +604,7 @@ export class BaileysStartupService extends ChannelStartupService {
     });
 
     this.client.ws.on('CB:ack,class:call', (packet) => {
-      console.log('CB:ack,class:call', packet);
+      // console.log('CB:ack,class:call', packet);
       const payload = {
         event: 'CB:ack,class:call',
         packet: packet,
@@ -3760,6 +3760,50 @@ export class BaileysStartupService extends ChannelStartupService {
   private prepareMessage(message: proto.IWebMessageInfo): any {
     const contentType = getContentType(message.message);
     const contentMsg = message?.message[contentType] as any;
+
+    // const teste = {
+    //   messageContextInfo: {
+    //     deviceListMetadata: {
+    //       senderKeyHash: "01JLmXAKQXesWw==",
+    //       senderTimestamp: "1745146541",
+    //       recipientKeyHash: "MqF4zcbEFrI3lw==",
+    //       recipientTimestamp: "1745572827"
+    //     },
+    //     deviceListMetadataVersion: 2
+    //   },
+    //   ephemeralMessage: {
+    //     message: {
+    //       documentWithCaptionMessage: {
+    //         message: {
+    //           documentMessage: {
+    //             url: "https://mmg.whatsapp.net/v/t62.7119-24/34722357_2213164112419645_2947918714698327654_n.enc?ccb=11-4&oh=01_Q5Aa1QGXkA2FdYMVuYn-mxcn4X3gyVqtOBWH22kp62HdG_P5Ug&oe=68331230&_nc_sid=5e03e0&mms3=true",
+    //             mimetype: "application/pdf",
+    //             title: "Pedido 124040.pdf",
+    //             fileSha256: "CERdYOygRTw1fkxfJ2v7R3YbdfJadzxrzmTZ0Mal99U=",
+    //             fileLength: "74798",
+    //             pageCount: 1,
+    //             mediaKey: "qpkol332m0Kc8Qe5/VQQ/a56bM8ZrDjbx2G9frFvbBE=",
+    //             fileName: "Pedido 124040.pdf",
+    //             fileEncSha256: "/z7vSGbT3QKAJ/HsjFm24BWiN4lH/75TwjFVMqbMA7k=",
+    //             directPath: "/v/t62.7119-24/34722357_2213164112419645_2947918714698327654_n.enc?ccb=11-4&oh=01_Q5Aa1QGXkA2FdYMVuYn-mxcn4X3gyVqtOBWH22kp62HdG_P5Ug&oe=68331230&_nc_sid=5e03e0",
+    //             mediaKeyTimestamp: "1745593130",
+    //             jpegThumbnail: "/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wAARCAAaABIDASIAAhEBAxEB/8QAGAABAQEBAQAAAAAAAAAAAAAAAAQIBQn/xAAkEAACAQUAAQQDAQAAAAAAAAABAgMABAUREiEGFSMkCCIyM//EABQBAQAAAAAAAAAAAAAAAAAAAAD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwD1CsEyi3N4L6YSQCb63wBG4I6O2DnoAtyNqh/Q7DbDGPOZu/xmVxFlb2djLBlJJ7YPPdSxyC5WFpYkREhdWVljlLOzpwEGg5bQ6NhKs0DOslzIBNMnVxCYmBWRlIClV2o1pW1plCsCwPRrIB8EboJMXNk5cZaS5m0trXIPBG13BazvcQxTFR2kcrJG0iBtgOUQsACVXegqylApWMx689cHLQxn1nneD+RrYPn3GbXt3Mv09df4eB8X8eB4rZlApSlB/9k=",
+    //             contextInfo: {
+    //               forwardingScore: 1,
+    //               isForwarded: true,
+    //               expiration: 7776000,
+    //               ephemeralSettingTimestamp: "1730124480",
+    //               disappearingMode: {
+    //                 initiator: "CHANGED_IN_CHAT"
+    //               }
+    //             },
+    //             caption: "Pedido 124040.pdf"
+    //           }
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
 
     const messageRaw = {
       key: message.key,
