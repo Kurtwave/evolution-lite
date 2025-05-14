@@ -535,6 +535,7 @@ export class BusinessStartupService extends ChannelStartupService {
               fromMe: key.fromMe,
               participant: key?.remoteJid,
               status: item.status.toUpperCase(),
+              errors: item.errors,
               instanceId: this.instanceId,
             };
 
