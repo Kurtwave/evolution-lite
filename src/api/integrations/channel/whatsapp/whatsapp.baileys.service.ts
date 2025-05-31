@@ -475,7 +475,7 @@ export class BaileysStartupService extends ChannelStartupService {
     } else {
       const baileysVersion = await fetchLatestBaileysVersion();
       version = baileysVersion.version;
-      log = `Baileys version: ${version}`;
+      log = `Latest Baileys version: ${version}`;
     }
 
     const integrationData = await this.prismaRepository.instance.findUnique({
@@ -488,7 +488,7 @@ export class BaileysStartupService extends ChannelStartupService {
         ? integrationData.webVersion.split('.').map(Number) 
         : version
 
-        this.logger.info(`WhatsApp webVersion: ${webVersion}`);
+    this.logger.info(`Using WhatsApp webVersion: ${webVersion}`);
 
     this.logger.info(log);
 
@@ -1984,7 +1984,7 @@ export class BaileysStartupService extends ChannelStartupService {
       messageRaw.groupInfo = groupInfo;
       this.logger.log(messageRaw);
 
-      this.sendDataWebhook(Events.SEND_MESSAGE, messageRaw);
+      // this.sendDataWebhook(Events.SEND_MESSAGE, messageRaw);
 
       return messageRaw;
     } catch (error) {

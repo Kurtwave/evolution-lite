@@ -833,7 +833,7 @@ export class BusinessStartupService extends ChannelStartupService {
 
       this.logger.log(messageRaw);
 
-      this.sendDataWebhook(Events.SEND_MESSAGE, messageRaw);
+      //this.sendDataWebhook(Events.SEND_MESSAGE, messageRaw);
 
       // await this.prismaRepository.message.create({
       //   data: messageRaw,
