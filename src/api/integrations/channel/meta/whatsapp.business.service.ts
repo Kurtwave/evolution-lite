@@ -635,14 +635,22 @@ export class BusinessStartupService extends ChannelStartupService {
       let webhookUrl: any;
       const linkPreview = options?.linkPreview != false ? undefined : false;
       if (options?.quoted) {
-        const m = options?.quoted;
+        let m = options.quoted;
 
+        if (typeof m === "string") {
+          try {
+            m = JSON.parse(m);
+          } catch (error) {
+            console.error("Erro ao fazer parse do quoted:", error);
+            throw "Invalid quoted format";
+          }
+        }
         const msg = m?.key;
 
         if (!msg) {
-          throw 'Message not found';
+          throw "Message not found";
         }
-
+      
         quoted = msg;
       }
       if (options?.webhookUrl) {
@@ -883,13 +891,14 @@ export class BusinessStartupService extends ChannelStartupService {
         formData,
         { headers },
       );
-      
+      this.logger.log(`Media uploaded successfully: ${res?.data}`);
+
+      return res?.data?.id;
     } catch (error) {
       if (error.response) { 
         this.logger.info(JSON.stringify(error.response.data));
       }
     }
-    return res.data.id;
   }
 
   protected async prepareMediaMessage(mediaMessage: MediaMessage) {
