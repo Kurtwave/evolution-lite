@@ -184,6 +184,20 @@ export class BusinessStartupService extends ChannelStartupService {
     return content;
   }
 
+  private messageLocationJson(received: any) {
+    const message = received.messages[0];
+    let content: any = {
+      locationMessage: {
+        degreesLatitude: message.location.latitude,
+        degreesLongitude: message.location.longitude,
+        address: message.location.address,
+        name: message.location.name,
+      },
+    };
+    message.context ? (content = { ...content, contextInfo: { stanzaId: message.context.id } }) : content;
+    return content;
+  }
+
   private messageTextJson(received: any) {
     let content: any;
     const message = received.messages[0];
@@ -428,6 +442,19 @@ export class BusinessStartupService extends ChannelStartupService {
             },
             contextInfo: this.messageContactsJson(received)?.contextInfo,
             messageType: 'contactMessage',
+            messageTimestamp: parseInt(received.messages[0].timestamp) as number,
+            source: 'unknown',
+            instanceId: this.instanceId,
+          };
+        } else if (received?.messages[0].location) {
+          messageRaw = {
+            key,
+            pushName,
+            message: {
+              ...this.messageLocationJson(received),
+            },
+            contextInfo: this.messageLocationJson(received)?.contextInfo,
+            messageType: 'locationMessage',
             messageTimestamp: parseInt(received.messages[0].timestamp) as number,
             source: 'unknown',
             instanceId: this.instanceId,
