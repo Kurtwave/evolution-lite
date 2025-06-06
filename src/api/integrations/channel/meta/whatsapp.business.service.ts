@@ -26,7 +26,6 @@ import axios from 'axios';
 import { arrayUnique, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import FormData from 'form-data';
-import { createReadStream } from 'fs';
 import mimeTypes from 'mime-types';
 import { join } from 'path';
 
@@ -637,12 +636,12 @@ export class BusinessStartupService extends ChannelStartupService {
       if (options?.quoted) {
         let m = options.quoted;
 
-        if (typeof m === "string") {
+        if (typeof m === 'string') {
           try {
             m = JSON.parse(m);
           } catch (error) {
             console.error("Erro ao fazer parse do quoted:", error);
-            throw "Invalid quoted format";
+            throw 'Invalid quoted format';
           }
         }
         const msg = m?.key;
