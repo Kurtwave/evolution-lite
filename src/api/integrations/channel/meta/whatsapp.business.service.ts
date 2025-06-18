@@ -389,10 +389,6 @@ export class BusinessStartupService extends ChannelStartupService {
             } catch (error) {
               this.logger.error(['Error on upload file to minio', error?.message, error?.stack]);
             }
-          } else {
-            const buffer = await this.downloadMediaMessage(received?.messages[0]);
-
-            messageRaw.message.base64 = buffer.toString('base64');
           }
         } else if (received?.messages[0].interactive) {
           messageRaw = {
