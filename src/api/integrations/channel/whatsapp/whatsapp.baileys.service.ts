@@ -710,6 +710,7 @@ export class BaileysStartupService extends ChannelStartupService {
   private readonly contactHandle = {
     'contacts.upsert': async (contacts: Contact[]) => {
       try {
+        this.logger.info(`VALOR DE CONTACT EM contacts.upsert: ${contacts}`)
         const contactsRaw: any = contacts.map((contact) => ({
           remoteJid: contact.id,
           pushName: contact?.name || contact?.verifiedName || contact.id.split('@')[0],
@@ -825,6 +826,8 @@ export class BaileysStartupService extends ChannelStartupService {
           `recv ${chats.length} chats, ${contacts.length} contacts, ${messages.length} msgs (is latest: ${isLatest}, progress: ${progress}%), type: ${syncType}`,
         );
 
+        this.logger.info(`VALOR DE CONTACTS EM HISTORY: ${JSON.stringify(contacts)}`)
+
         const messagesRaw: any[] = [];
 
         for (const m of messages) {
@@ -885,6 +888,8 @@ export class BaileysStartupService extends ChannelStartupService {
           //     console.log('requested on-demand sync, id=', messageId);
           //   }
           // }
+
+          this.logger.info("VALOR DA MENSAGEM: " + JSON.stringify(received))
 
           if (received.message?.protocolMessage?.editedMessage || received.message?.editedMessage?.message) {
             const editedMessage =
