@@ -4060,8 +4060,8 @@ export class BaileysStartupService extends ChannelStartupService {
 
   public normalizeLidKey(key: proto.IMessageKey): string | undefined {
     const extendedKey = key as IMessageKeyWithExtras;
-    if (extendedKey.remoteJid?.includes('@lid') && extendedKey.senderLid) {
-      return extendedKey.senderLid;
+    if (extendedKey.remoteJid?.includes('@lid') && extendedKey.senderPn) {
+      return extendedKey.senderPn;
     }
     return extendedKey.remoteJid;
   }
