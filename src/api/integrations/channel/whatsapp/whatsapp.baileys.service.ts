@@ -140,6 +140,11 @@ import { useVoiceCallsBaileys } from './voiceCalls/useVoiceCallsBaileys';
 
 const groupMetadataCache = new CacheService(new CacheEngine(configService, 'groups').getEngine());
 
+interface IMessageKeyWithExtras extends proto.IMessageKey {
+  senderPn?: string | null;
+  senderLid?: string | null;
+}
+
 export class BaileysStartupService extends ChannelStartupService {
   constructor(
     public readonly configService: ConfigService,
@@ -890,6 +895,10 @@ export class BaileysStartupService extends ChannelStartupService {
           // }
 
           this.logger.info("VALOR DA MENSAGEM: " + JSON.stringify(received))
+
+          received.key.remoteJid = this.normalizeLidKey(received?.key);
+
+          this.logger.info("NOVO VALOR JID " + JSON.stringify(received?.key))
 
           if (received.message?.protocolMessage?.editedMessage || received.message?.editedMessage?.message) {
             const editedMessage =
@@ -4047,5 +4056,13 @@ export class BaileysStartupService extends ChannelStartupService {
     };
 
     return response;
+  }
+
+  public normalizeLidKey(key: proto.IMessageKey): string | undefined {
+    const extendedKey = key as IMessageKeyWithExtras;
+    if (extendedKey.remoteJid?.includes('@lid') && extendedKey.senderPn) {
+      return extendedKey.senderPn;
+    }
+    return extendedKey.remoteJid;
   }
 }
