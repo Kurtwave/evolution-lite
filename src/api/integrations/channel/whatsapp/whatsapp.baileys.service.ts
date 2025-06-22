@@ -898,8 +898,6 @@ export class BaileysStartupService extends ChannelStartupService {
 
           received.key.remoteJid = this.normalizeLidKey(received?.key);
 
-          this.logger.info("NOVO VALOR JID " + JSON.stringify(received?.key))
-
           if (received.message?.protocolMessage?.editedMessage || received.message?.editedMessage?.message) {
             const editedMessage =
               received.message?.protocolMessage || received.message?.editedMessage?.message?.protocolMessage;
@@ -4061,6 +4059,7 @@ export class BaileysStartupService extends ChannelStartupService {
   public normalizeLidKey(key: proto.IMessageKey): string | undefined {
     const extendedKey = key as IMessageKeyWithExtras;
     if (extendedKey.remoteJid?.includes('@lid') && extendedKey.senderPn) {
+      this.logger.info("NOVO VALOR JID " + extendedKey.senderPn);
       return extendedKey.senderPn;
     }
     return extendedKey.remoteJid;

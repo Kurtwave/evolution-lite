@@ -1,6 +1,6 @@
 {
   "name": "evolution-api",
-  "version": "2.2.36",
+  "version": "2.2.37",
   "description": "Rest api for communication with WhatsApp",
   "main": "./dist/main.js",
   "type": "commonjs",
