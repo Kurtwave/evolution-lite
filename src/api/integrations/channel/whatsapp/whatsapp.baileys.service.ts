@@ -916,7 +916,9 @@ export class BaileysStartupService extends ChannelStartupService {
             }
           }
 
-          if (received.messageStubParameters && received.messageStubParameters[0] === 'Message absent from node') {
+          if (received.messageStubParameters && 
+            (received.messageStubParameters[0] === 'Message absent from node' || 
+             received.messageStubParameters[0] === 'No SenderKeyRecord found for decryption')) {
             this.logger.info(`Recovering message lost messageId: ${received.key.id}`);
 
             await this.baileysCache.set(received.key.id, {
