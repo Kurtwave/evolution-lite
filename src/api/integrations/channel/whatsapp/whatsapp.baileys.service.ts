@@ -916,9 +916,7 @@ export class BaileysStartupService extends ChannelStartupService {
             }
           }
 
-          if (received.messageStubParameters && 
-            (received.messageStubParameters[0] === 'Message absent from node' || 
-             received.messageStubParameters[0] === 'No SenderKeyRecord found for decryption')) {
+          if (received.messageStubParameters && received.messageStubParameters[0] === 'Message absent from node') {
             this.logger.info(`Recovering message lost messageId: ${received.key.id}`);
 
             await this.baileysCache.set(received.key.id, {
@@ -939,6 +937,25 @@ export class BaileysStartupService extends ChannelStartupService {
             };
 
             this.logger.verbose('Sending data ciphertext to webhook in event MESSAGES_UPSERT');
+            this.sendDataWebhook(Events.MESSAGES_UPSERT, messageRaw);
+
+            continue;
+          }
+
+          if (received.messageStubParameters && received.messageStubParameters[0] === 'No SenderKeyRecord found for decryption') {
+            const messageRaw = {
+              key: received.key,
+              pushName: received.pushName,
+              messageType: 'NoSenderKeyRecord',
+              message: {},
+              messageTimestamp: received.messageTimestamp as number,
+              owner: this.instance.name,
+              instanceId: this.instanceId,
+              source: getDevice(received.key.id),
+              groupInfo
+            };
+
+            this.logger.verbose('Sending data NoSenderKeyRecord to webhook in event MESSAGES_UPSERT');
             this.sendDataWebhook(Events.MESSAGES_UPSERT, messageRaw);
 
             continue;
