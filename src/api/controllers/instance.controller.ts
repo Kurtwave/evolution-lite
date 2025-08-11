@@ -131,7 +131,8 @@ export class InstanceController {
           throw new BadRequestException('number is required');
         }
         const urlServer = this.configService.get<HttpServer>('SERVER').URL;
-        webhookWaBusiness = `${urlServer}/webhook/meta`;
+        const webHookTest = this.configService.get<WaBusiness>('WA_BUSINESS').WEBHOOK_TEST;
+        webhookWaBusiness = `${webHookTest ? webHookTest : urlServer}/webhook/meta`;
         accessTokenWaBusiness = this.configService.get<WaBusiness>('WA_BUSINESS').TOKEN_WEBHOOK;
       }
 
@@ -283,6 +284,32 @@ export class InstanceController {
     const instanceNames = instanceName ? [instanceName] : null;
 
     return this.waMonitor.instanceInfo(instanceNames);
+  }
+
+  public async getInstanceByName({ instanceName }: InstanceDto) {
+    const instanceByName = await this.prismaRepository.instance.findFirst({
+      where: {
+        name: instanceName,
+      },
+    });
+
+    if (!instanceByName) {
+      return null;
+    }
+
+    const response = {
+      id: instanceByName.id,
+      name: instanceByName.name,
+      ownerJid: instanceByName.ownerJid,
+      connectionStatus: instanceByName.connectionStatus,
+      profileName: instanceByName.profileName,
+    }
+    return response;
+  }
+
+  public async countInstances() {
+    const count = await this.prismaRepository.instance.count();
+    return count;
   }
 
   public async setPresence({ instanceName }: InstanceDto, data: SetPresenceDto) {

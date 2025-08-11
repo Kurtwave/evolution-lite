@@ -1,6 +1,5 @@
 import { authGuard } from '@api/guards/auth.guard';
 import { instanceExistsGuard, instanceLoggedGuard } from '@api/guards/instance.guard';
-import Telemetry from '@api/guards/telemetry.guard';
 import { ChannelRouter } from '@api/integrations/channel/channel.router';
 import { EventRouter } from '@api/integrations/event/event.router';
 import { StorageRouter } from '@api/integrations/storage/storage.router';
@@ -32,13 +31,9 @@ const router: Router = Router();
 const serverConfig = configService.get('SERVER');
 const guards = [instanceExistsGuard, instanceLoggedGuard, authGuard['apikey']];
 
-const telemetry = new Telemetry();
-
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
 router
-  .use((req, res, next) => telemetry.collectTelemetry(req, res, next))
-
   .get('/', (req, res) => {
     res.status(HttpStatus.OK).json({
       status: HttpStatus.OK,

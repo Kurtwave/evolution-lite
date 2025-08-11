@@ -26,7 +26,6 @@ import axios from 'axios';
 import { arrayUnique, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import FormData from 'form-data';
-import { createReadStream } from 'fs';
 import mimeTypes from 'mime-types';
 import { join } from 'path';
 
@@ -68,7 +67,7 @@ export class BusinessStartupService extends ChannelStartupService {
   }
 
   private isMediaMessage(message: any) {
-    return message.document || message.image || message.audio || message.video;
+    return message.document || message.image || message.audio || message.video || message.sticker;
   }
 
   private async post(message: any, params: string) {
@@ -185,17 +184,57 @@ export class BusinessStartupService extends ChannelStartupService {
     return content;
   }
 
+  private messageLocationJson(received: any) {
+    const message = received.messages[0];
+    let content: any = {
+      locationMessage: {
+        degreesLatitude: message.location.latitude,
+        degreesLongitude: message.location.longitude,
+        address: message.location.address,
+        name: message.location.name,
+      },
+    };
+    message.context ? (content = { ...content, contextInfo: { stanzaId: message.context.id } }) : content;
+    return content;
+  }
+
   private messageTextJson(received: any) {
     let content: any;
     const message = received.messages[0];
+    const referral = message.referral;
+
+    const externalAdReply = referral?.source_url
+      ? {
+        externalAdReply: {
+          sourceUrl: referral?.source_url,
+          title: referral?.headline,
+          thumbnailUrl: referral?.thumbnail_url
+        }
+      }
+      : undefined;
+
     if (message.from === received.metadata.phone_number_id) {
       content = {
-        extendedTextMessage: { text: message.text.body },
+        extendedTextMessage: { text: message?.text?.body },
       };
-      message.context ? (content = { ...content, contextInfo: { stanzaId: message.context.id } }) : content;
+      if (message.context?.id) {
+        content.contextInfo = {
+          stanzaId: message?.context?.id,
+          ...externalAdReply,
+        };
+      } else if (externalAdReply) {
+        content.contextInfo = externalAdReply;
+      }
     } else {
-      content = { conversation: message.text.body };
-      message.context ? (content = { ...content, contextInfo: { stanzaId: message.context.id } }) : content;
+      content = { conversation: message?.text?.body };
+      if (message?.context?.id) {
+        content.contextInfo = {
+          stanzaId: message?.context?.id,
+          ...externalAdReply,
+        };
+      } else if (externalAdReply) {
+        content.contextInfo = externalAdReply;
+      }
     }
     return content;
   }
@@ -241,9 +280,10 @@ export class BusinessStartupService extends ChannelStartupService {
         vcard: vcard(message.contacts[0]),
       };
     } else {
+      const contactsArray = Array.isArray(message.contacts) ? message.contacts : [];
       content.contactsArrayMessage = {
         displayName: `${message.length} contacts`,
-        contacts: message.map((contact) => {
+        contacts: contactsArray.map((contact) => {
           return {
             displayName: contact.name.formatted_name,
             vcard: vcard(contact),
@@ -354,19 +394,19 @@ export class BusinessStartupService extends ChannelStartupService {
                 'Content-Type': mimetype,
               });
 
-              const createdMessage = await this.prismaRepository.message.create({
-                data: messageRaw,
-              });
+              // const createdMessage = await this.prismaRepository.message.create({
+              //   data: messageRaw,
+              // });
 
-              await this.prismaRepository.media.create({
-                data: {
-                  messageId: createdMessage.id,
-                  instanceId: this.instanceId,
-                  type: mediaType,
-                  fileName: fullName,
-                  mimetype,
-                },
-              });
+              // await this.prismaRepository.media.create({
+              //   data: {
+              //     messageId: createdMessage.id,
+              //     instanceId: this.instanceId,
+              //     type: mediaType,
+              //     fileName: fullName,
+              //     mimetype,
+              //   },
+              // });
 
               const mediaUrl = await s3Service.getObjectUrl(fullName);
 
@@ -375,10 +415,6 @@ export class BusinessStartupService extends ChannelStartupService {
             } catch (error) {
               this.logger.error(['Error on upload file to minio', error?.message, error?.stack]);
             }
-          } else {
-            const buffer = await this.downloadMediaMessage(received?.messages[0]);
-
-            messageRaw.message.base64 = buffer.toString('base64');
           }
         } else if (received?.messages[0].interactive) {
           messageRaw = {
@@ -432,6 +468,19 @@ export class BusinessStartupService extends ChannelStartupService {
             source: 'unknown',
             instanceId: this.instanceId,
           };
+        } else if (received?.messages[0].location) {
+          messageRaw = {
+            key,
+            pushName,
+            message: {
+              ...this.messageLocationJson(received),
+            },
+            contextInfo: this.messageLocationJson(received)?.contextInfo,
+            messageType: 'locationMessage',
+            messageTimestamp: parseInt(received.messages[0].timestamp) as number,
+            source: 'unknown',
+            instanceId: this.instanceId,
+          };
         } else {
           messageRaw = {
             key,
@@ -441,6 +490,7 @@ export class BusinessStartupService extends ChannelStartupService {
             messageType: this.renderMessageType(received.messages[0].type),
             messageTimestamp: parseInt(received.messages[0].timestamp) as number,
             source: 'unknown',
+            errors: received.messages[0].errors || [],
             instanceId: this.instanceId,
           };
         }
@@ -449,11 +499,11 @@ export class BusinessStartupService extends ChannelStartupService {
 
         this.sendDataWebhook(Events.MESSAGES_UPSERT, messageRaw);
 
-        if (!this.isMediaMessage(received?.messages[0])) {
-          await this.prismaRepository.message.create({
-            data: messageRaw,
-          });
-        }
+        // if (!this.isMediaMessage(received?.messages[0])) {
+        //   await this.prismaRepository.message.create({
+        //     data: messageRaw,
+        //   });
+        // }
 
         const contact = await this.prismaRepository.contact.findFirst({
           where: { instanceId: this.instanceId, remoteJid: key.remoteJid },
@@ -504,59 +554,45 @@ export class BusinessStartupService extends ChannelStartupService {
             return;
           }
           if (key.remoteJid !== 'status@broadcast' && !key?.remoteJid?.match(/(:\d+)/)) {
-            const findMessage = await this.prismaRepository.message.findFirst({
-              where: {
-                instanceId: this.instanceId,
-                key: {
-                  path: ['id'],
-                  equals: key.id,
-                },
-              },
-            });
 
-            if (!findMessage) {
-              return;
-            }
+            if (item.status === 'read' && key.fromMe) return;
 
             if (item.message === null && item.status === undefined) {
               this.sendDataWebhook(Events.MESSAGES_DELETE, key);
 
-              const message: any = {
-                messageId: findMessage.id,
-                keyId: key.id,
-                remoteJid: key.remoteJid,
-                fromMe: key.fromMe,
-                participant: key?.remoteJid,
-                status: 'DELETED',
-                instanceId: this.instanceId,
-              };
+              // const message: any = {
+              //   messageId: item.id,
+              //   keyId: key.id,
+              //   remoteJid: key.remoteJid,
+              //   fromMe: key.fromMe,
+              //   participant: key?.remoteJid,
+              //   status: 'DELETED',
+              //   instanceId: this.instanceId,
+              // };
 
-              await this.prismaRepository.messageUpdate.create({
-                data: message,
-              });
+              // await this.prismaRepository.messageUpdate.create({
+              //   data: message,
+              // });
 
               return;
             }
 
             const message: any = {
-              messageId: findMessage.id,
+              messageId: item.id,
               keyId: key.id,
               remoteJid: key.remoteJid,
               fromMe: key.fromMe,
               participant: key?.remoteJid,
               status: item.status.toUpperCase(),
+              errors: item.errors,
               instanceId: this.instanceId,
             };
 
             this.sendDataWebhook(Events.MESSAGES_UPDATE, message);
 
-            await this.prismaRepository.messageUpdate.create({
-              data: message,
-            });
-
-            if (findMessage.webhookUrl) {
-              await axios.post(findMessage.webhookUrl, message);
-            }
+            // await this.prismaRepository.messageUpdate.create({
+            //   data: message,
+            // });
           }
         }
       }
@@ -648,14 +684,22 @@ export class BusinessStartupService extends ChannelStartupService {
       let webhookUrl: any;
       const linkPreview = options?.linkPreview != false ? undefined : false;
       if (options?.quoted) {
-        const m = options?.quoted;
+        let m = options.quoted;
 
+        if (typeof m === 'string') {
+          try {
+            m = JSON.parse(m);
+          } catch (error) {
+            console.error("Erro ao fazer parse do quoted:", error);
+            throw 'Invalid quoted format';
+          }
+        }
         const msg = m?.key;
 
         if (!msg) {
-          throw 'Message not found';
+          throw "Message not found";
         }
-
+      
         quoted = msg;
       }
       if (options?.webhookUrl) {
@@ -721,8 +765,6 @@ export class BusinessStartupService extends ChannelStartupService {
           return await this.post(content, 'messages');
         }
         if (message['media']) {
-          const isImage = message['mimetype']?.startsWith('image/');
-
           content = {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
@@ -731,8 +773,8 @@ export class BusinessStartupService extends ChannelStartupService {
             [message['mediaType']]: {
               [message['type']]: message['id'],
               preview_url: linkPreview,
-              ...(message['fileName'] && !isImage && { filename: message['fileName'] }),
               caption: message['caption'],
+              ...(message['mediaType'] === "document" && message['fileName'] && {filename: message.fileName}),
             },
           };
           quoted ? (content.context = { message_id: quoted.id }) : content;
@@ -848,11 +890,11 @@ export class BusinessStartupService extends ChannelStartupService {
 
       this.logger.log(messageRaw);
 
-      this.sendDataWebhook(Events.SEND_MESSAGE, messageRaw);
+      //this.sendDataWebhook(Events.SEND_MESSAGE, messageRaw);
 
-      await this.prismaRepository.message.create({
-        data: messageRaw,
-      });
+      // await this.prismaRepository.message.create({
+      //   data: messageRaw,
+      // });
 
       return messageRaw;
     } catch (error) {
@@ -882,27 +924,30 @@ export class BusinessStartupService extends ChannelStartupService {
 
   private async getIdMedia(mediaMessage: any) {
     const formData = new FormData();
-
-    const fileStream = createReadStream(mediaMessage.media);
-
-    formData.append('file', fileStream, { filename: 'media', contentType: mediaMessage.mimetype });
-    formData.append('typeFile', mediaMessage.mimetype);
+    const buffer = mediaMessage.media;
     formData.append('messaging_product', 'whatsapp');
+    formData.append('type', mediaMessage.mimetype);
+    formData.append('file', buffer, { filename: mediaMessage.fileName, contentType: mediaMessage.mimetype });
 
-    // const fileBuffer = await fs.readFile(mediaMessage.media);
+    const headers = { "Content-Type": "multipart/form-data", Authorization: `Bearer ${this.token}` };
+    let urlServer = this.configService.get<WaBusiness>('WA_BUSINESS').URL;
+    const version = this.configService.get<WaBusiness>('WA_BUSINESS').VERSION;
 
-    // const fileBlob = new Blob([fileBuffer], { type: mediaMessage.mimetype });
-    // formData.append('file', fileBlob);
-    // formData.append('typeFile', mediaMessage.mimetype);
-    // formData.append('messaging_product', 'whatsapp');
+    let res: any;
+    try {
+      res = await axios.post(
+        urlServer + '/' + version + '/' + this.number + '/media',
+        formData,
+        { headers },
+      );
+      this.logger.log(`Media uploaded successfully: ${res?.data}`);
 
-    const headers = { Authorization: `Bearer ${this.token}` };
-    const res = await axios.post(
-      process.env.API_URL + '/' + process.env.VERSION + '/' + this.number + '/media',
-      formData,
-      { headers },
-    );
-    return res.data.id;
+      return res?.data?.id;
+    } catch (error) {
+      if (error.response) { 
+        this.logger.info(JSON.stringify(error.response.data));
+      }
+    }
   }
 
   protected async prepareMediaMessage(mediaMessage: MediaMessage) {
@@ -937,11 +982,11 @@ export class BusinessStartupService extends ChannelStartupService {
         prepareMedia.type = 'link';
       } else {
         mimetype = mimeTypes.lookup(mediaMessage.fileName);
+        prepareMedia.mimetype = mimetype;
         const id = await this.getIdMedia(prepareMedia);
         prepareMedia.id = id;
         prepareMedia.type = 'id';
       }
-
       prepareMedia.mimetype = mimetype;
 
       return prepareMedia;
@@ -954,7 +999,7 @@ export class BusinessStartupService extends ChannelStartupService {
   public async mediaMessage(data: SendMediaDto, file?: any) {
     const mediaData: SendMediaDto = { ...data };
 
-    if (file) mediaData.media = file.buffer.toString('base64');
+    if (file) mediaData.media = file.buffer;
 
     const message = await this.prepareMediaMessage(mediaData);
 
@@ -981,7 +1026,7 @@ export class BusinessStartupService extends ChannelStartupService {
     let mimetype: string | false;
 
     const prepareMedia: any = {
-      fileName: `${hash}.mp3`,
+      fileName: `${hash}.ogg`,
       mediaType: 'audio',
       media: audio,
     };
@@ -992,6 +1037,7 @@ export class BusinessStartupService extends ChannelStartupService {
       prepareMedia.type = 'link';
     } else {
       mimetype = mimeTypes.lookup(prepareMedia.fileName);
+      prepareMedia.mimetype = mimetype;
       const id = await this.getIdMedia(prepareMedia);
       prepareMedia.id = id;
       prepareMedia.type = 'id';
@@ -1006,10 +1052,7 @@ export class BusinessStartupService extends ChannelStartupService {
     const mediaData: SendAudioDto = { ...data };
 
     if (file?.buffer) {
-      mediaData.audio = file.buffer.toString('base64');
-    } else if (isURL(mediaData.audio)) {
-      // DO NOTHING
-      // mediaData.audio = mediaData.audio;
+      mediaData.audio = file.buffer;
     } else {
       console.error('El archivo no tiene buffer o file es undefined');
       throw new Error('File or buffer is undefined');

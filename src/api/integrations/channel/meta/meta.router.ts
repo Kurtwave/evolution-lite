@@ -17,6 +17,17 @@ export class MetaRouter extends RouterBroker {
         const response = await metaController.receiveWebhook(body);
 
         return res.status(200).json(response);
+      })
+      .get(this.routerPath('webhook/whatsapp', false), async (req, res) => {
+        if (req.query['hub.verify_token'] === configService.get<WaBusiness>('WA_BUSINESS').TOKEN_WEBHOOK)
+          res.send(req.query['hub.challenge']);
+        else res.send('Error, wrong validation token');
+      })
+      .post(this.routerPath('webhook/whatsapp', false), async (req, res) => {
+        const { body } = req;
+        const response = await metaController.receiveWebhook(body);
+
+        return res.status(200).json(response);
       });
   }
 

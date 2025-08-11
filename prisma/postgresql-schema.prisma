@@ -70,8 +70,9 @@ model Instance {
   integration             String?                  @db.VarChar(100)
   number                  String?                  @db.VarChar(100)
   businessId              String?                  @db.VarChar(100)
-  token                   String?                  @db.VarChar(255)
+  token                   String?                  @db.Text
   clientName              String?                  @db.VarChar(100)
+  webVersion              String?                  @db.VarChar(50)
   disconnectionReasonCode Int?                     @db.Integer
   disconnectionObject     Json?                    @db.JsonB
   disconnectionAt         DateTime?                @db.Timestamp
@@ -626,4 +627,5 @@ model IsOnWhatsapp {
   jidOptions String
   createdAt  DateTime @default(now()) @db.Timestamp
   updatedAt  DateTime @updatedAt @db.Timestamp
+  @@index([remoteJid])
 }

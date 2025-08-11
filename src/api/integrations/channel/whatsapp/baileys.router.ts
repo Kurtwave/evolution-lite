@@ -69,6 +69,16 @@ export class BaileysRouter extends RouterBroker {
 
         res.status(HttpStatus.OK).json(response);
       })
+      .post(this.routerPath('downloadMediaMessage'), ...guards, async (req, res) => {
+        const response = await this.dataValidate<InstanceDto>({
+          request: req,
+          schema: instanceSchema,
+          ClassRef: InstanceDto,
+          execute: (instance) => baileysController.downloadMediaMessage(instance, req.body),
+        });
+
+        res.status(HttpStatus.OK).json(response);
+      })
       .post(this.routerPath('sendNode'), ...guards, async (req, res) => {
         const response = await this.dataValidate<InstanceDto>({
           request: req,
